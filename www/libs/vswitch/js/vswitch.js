@@ -10,11 +10,6 @@
         throw new Error("vswitch error: " + m);
     }
 
-    function devWarning(m) {
-        throw new Error("vswitch warning: " + m);
-    }
-
-
     function getClassesAsArray(cssClasses) {
         if ('string' === typeof cssClasses) {
             return cssClasses.split(" ");
@@ -85,6 +80,10 @@
         return raw;
     }
 
+    function inArray(k, arr) {
+        return (-1 !== arr.indexOf(k));
+    }
+
     window.vswitch = function (jSurface, views, options) {
         this.surface = jSurface;
         /**
@@ -134,7 +133,7 @@
              *                      ----- ...
              *
              *               callbackName can be one of:
-             *               - init (triggered for every views that kicks in during the call to the init method)
+             *               - init (triggered for every views that kicks in for the first time)
              *               - in (triggered for every views that kicks in during a call to the following methods: switchView, kickIn, toggle)
              *               - out (triggered for every views that kicks out during a call to the following methods: switchView, kickIn, toggle)
              *
@@ -149,8 +148,12 @@
             callbacks: {},
         }, options);
 
-        this.init();
 
+        this._initialized = []; // keeping track of initialized views
+
+
+        this.init();
+        jSurface.data('vswitch', this);
 
     };
     vswitch.prototype = {
@@ -167,14 +170,19 @@
             this._trigger('init', this.o.starter);
 
         },
-        switchView: function (views, callbacksArg) {
+        switchView: function (views, callbacksArg, mode) {
+            if('undefined' === typeof mode){
+                mode = this.o.mode;
+            }
+            
+            
             this._trigger('in', views, callbacksArg);
             this._trigger('out', diff(this.viewClasses, views), callbacksArg);
 
-            if ('css' === this.o.mode) {
+            if ('css' === mode) {
                 this.surface.removeClass(getClassesAsSsv(this.viewClasses)).addClass(getClassesAsSsv(views));
             }
-            else if ('show' === this.o.mode) {
+            else if ('show' === mode) {
                 var aViews = getClassesAsArray(views);
                 this._getViews().each(function () {
                     if (true === hasAnyClass($(this), aViews)) {
@@ -185,49 +193,62 @@
                     }
                 });
             }
-            else if ('fade' === this.o.mode) {
+            else if ('fade' === mode) {
                 var zis = this;
                 this._getViews(this.viewClasses, views).fadeOut(100, function () {
                     zis._getViews(views).fadeIn();
                 });
             }
             else {
-                devError("Invalid mode: " + this.o.mode);
+                devError("Invalid mode: " + mode);
             }
+            return this;
         },
-        kickIn: function (views, callbacksArg) {
+        kickIn: function (views, callbacksArg, mode) {
+            if('undefined' === typeof mode){
+                mode = this.o.mode;
+            }
             this._trigger('in', views, callbacksArg);
-            if ('css' === this.o.mode) {
+            if ('css' === mode) {
                 this.surface.addClass(getClassesAsSsv(views));
             }
-            else if ('show' === this.o.mode) {
+            else if ('show' === mode) {
                 this._getViews(views).show();
             }
-            else if ('fade' === this.o.mode) {
+            else if ('fade' === mode) {
                 this._getViews(views).fadeIn(this.o.fadeSpeed);
             }
             else {
-                devError("Invalid mode: " + this.o.mode);
+                devError("Invalid mode: " + mode);
             }
+            return this;
         },
-        kickOut: function (views, callbacksArg) {
+        kickOut: function (views, callbacksArg, mode) {
+            if('undefined' === typeof mode){
+                mode = this.o.mode;
+            }
+            
             this._trigger('out', views, callbacksArg);
-            if ('css' === this.o.mode) {
+            if ('css' === mode) {
                 this.surface.removeClass(getClassesAsSsv(views));
             }
-            else if ('show' === this.o.mode) {
+            else if ('show' === mode) {
                 this._getViews(views).hide();
             }
-            else if ('fade' === this.o.mode) {
+            else if ('fade' === mode) {
                 this._getViews(views).fadeOut(this.o.fadeSpeed);
             }
             else {
-                devError("Invalid mode: " + this.o.mode);
+                devError("Invalid mode: " + mode);
             }
+            return this;
         },
-        toggle: function (views, callbacksArg) {
+        toggle: function (views, callbacksArg, mode) {
 
-            var zis = this;
+            if('undefined' === typeof mode){
+                mode = this.o.mode;
+            }
+            
             var aViews = getClassesAsArray(views);
             for (var i in aViews) {
                 var cssClass = aViews[i];
@@ -236,7 +257,7 @@
 
                     if (isHidden(jView)) {
                         this._triggerByElement('in', cssClass, jView, callbacksArg);
-                        switch (this.o.mode) {
+                        switch (mode) {
                             case "css":
                                 jView.toggleClass(cssClass);
                                 break;
@@ -247,13 +268,13 @@
                                 jView.fadeIn(this.o.fadeSpeed);
                                 break;
                             default:
-                                devError("Invalid mode: " + zis.o.mode);
+                                devError("Invalid mode: " + mode);
                                 break;
                         }
                     }
                     else {
                         this._triggerByElement('out', cssClass, jView, callbacksArg);
-                        switch (this.o.mode) {
+                        switch (mode) {
                             case "css":
                                 jView.toggleClass(cssClass);
                                 break;
@@ -264,15 +285,13 @@
                                 jView.fadeOut(this.o.fadeSpeed);
                                 break;
                             default:
-                                devError("Invalid mode: " + zis.o.mode);
+                                devError("Invalid mode: " + mode);
                                 break;
                         }
                     }
                 }
-                else {
-                    devWarning("class not found: " + aViews[i]);
-                }
             }
+            return this;
         },
         _getViews: function (viewsOrNull, notViews) {
             if ('undefined' === typeof viewsOrNull) {
@@ -289,19 +308,39 @@
             var aViews = getClassesAsArray(views);
             for (var i in aViews) {
                 if (aViews[i] in this.o.callbacks) {
+
+                    var jView = this.surface.find('.' + aViews[i]);
+                    this._triggerInitMaybe(cbName, aViews[i], jView, args);
+
                     if (cbName in this.o.callbacks[aViews[i]]) {
-                        var cb = this.o.callbacks[aViews[i]][cbName];
-                        var jView = this.surface.find('.' + aViews[i]);
-                        cb(jView, args);
+                        if ('init' !== cbName) {
+                            var cb = this.o.callbacks[aViews[i]][cbName];
+                            cb(jView, args);
+                        }
                     }
                 }
             }
         },
         _triggerByElement: function (cbName, viewName, jView, args) {
             if (viewName in this.o.callbacks) {
+                
+                this._triggerInitMaybe(cbName, viewName, jView, args);
+
                 if (cbName in this.o.callbacks[viewName]) {
                     var cb = this.o.callbacks[viewName][cbName];
                     cb(jView, args);
+                }
+            }
+        },
+        _triggerInitMaybe: function (cbName, viewName, jView, callArg) {
+            if ('out' !== viewName) {
+                if ('init' in this.o.callbacks[viewName]) {
+                    if (false === inArray(viewName, this._initialized)) {
+                        if ('init' === cbName || 'in' === cbName) {
+                            this.o.callbacks[viewName]['init'](jView, callArg);
+                            this._initialized.push(viewName);
+                        }
+                    }
                 }
             }
         }

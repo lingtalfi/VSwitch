@@ -279,7 +279,7 @@ Options
      *                      ----- ...
      *
      *               callbackName can be one of:
-     *               - init (triggered for every views that kicks in during the call to the init method)
+     *               - init (triggered for every views that kicks in for the first time)
      *               - in (triggered for every views that kicks in during a call to the following methods: switchView, kickIn, toggle)
      *               - out (triggered for every views that kicks out during a call to the following methods: switchView, kickIn, toggle)
      *
@@ -297,8 +297,26 @@ Options
 
 
 
+Dev Questions
+-------------------
+
+- When I create a vswitch surface, do the views have to actually exist, or can they be created later, dynamically? 
+
+
+
 History Log
 ------------------
+    
+- 1.2.0 -- 2016-03-04
+
+    - add on the fly mode argument to switchView, kickIn, kickOut and toggle methods
+    - review init callback, now runs once per view no matter which method was used
+    - removed warning when toggle is applied to a non existing class
+    - main method return this for chainability
+    
+- 1.1.0 -- 2016-03-03
+
+    - vswitch attaches itself to the jSurface object on init
     
 - 1.0.0 -- 2016-03-03
 
