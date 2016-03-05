@@ -296,11 +296,7 @@ Options
 ```
 
 
-
-Dev Questions
--------------------
-
-- When I create a vswitch surface, do the views have to actually exist, or can they be created later, dynamically? 
+ 
 
 
 
