@@ -303,6 +303,10 @@ Options
 History Log
 ------------------
     
+- 1.3.0 -- 2016-04-02
+
+    - create the library only if it not already exist
+
 - 1.2.0 -- 2016-03-04
 
     - add on the fly mode argument to switchView, kickIn, kickOut and toggle methods
